@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.imageplatform.mapper.TokenMapper">
+
+    <!-- Token 表的 resultMap 映射 -->
+    <resultMap id="tokenResultMap" type="com.imageplatform.entity.Token">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="token" column="token"/>
+        <result property="deviceInfo" column="device_info"/>
+        <result property="ipAddress" column="ip_address"/>
+        <result property="expiryTime" column="expiry_time"/>
+        <result property="isValid" column="is_valid"/>
+    </resultMap>
+
+    <!-- 1. 根据ID查询令牌 -->
+    <select id="findById" resultMap="tokenResultMap">
+        SELECT * FROM user_tokens WHERE id = #{id}
+    </select>
+
+    <!-- 2. 查询所有令牌 -->
+    <select id="findAll" resultMap="tokenResultMap">
+        SELECT * FROM user_tokens
+    </select>
+
+    <!-- 3. 根据用户ID查询令牌 -->
+    <select id="findByUserID" resultMap="tokenResultMap">
+        SELECT * FROM user_tokens WHERE user_id = #{userId}
+    </select>
+
+    <!-- 4. 根据token字符串查询 -->
+    <select id="findByToken" resultMap="tokenResultMap">
+        SELECT * FROM user_tokens WHERE token = #{token}
+    </select>
+
+    <!-- 5. 插入新令牌 -->
+    <insert id="insert" parameterType="com.imageplatform.entity.Token"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_tokens (
+            user_id,
+            token,
+            device_info,
+            ip_address,
+            expiry_time,
+            is_valid
+        ) VALUES (
+                     #{userId},
+                     #{token},
+                     #{deviceInfo},
+                     #{ipAddress},
+                     #{expiryTime},
+                     #{isValid}
+                 )
+    </insert>
+
+    <!-- 6. 更新令牌信息 -->
+    <update id="update" parameterType="com.imageplatform.entity.Token">
+        UPDATE user_tokens
+        SET
+            user_id = #{userId},
+            token = #{token},
+            device_info = #{deviceInfo},
+            ip_address = #{ipAddress},
+            expiry_time = #{expiryTime},
+            is_valid = #{isValid}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 7. 检查用户是否存在令牌（这里的方法名需要修改） -->
+    <!-- 注意：方法名 existsByUsername 不对，应该是检查用户是否有有效令牌 -->
+    <select id="existsByUsername" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM user_tokens ut
+                 JOIN users u ON ut.user_id = u.id
+        WHERE u.username = #{username}
+          AND ut.is_valid = 1
+          AND ut.expiry_time > NOW()
+    </select>
+
+    <!-- 8. 额外的实用查询方法（建议添加） -->
+
+    <!-- 查询用户的所有有效令牌 -->
+    <select id="findValidTokensByUserId" resultMap="tokenResultMap">
+        SELECT * FROM user_tokens
+        WHERE user_id = #{userId}
+          AND is_valid = 1
+          AND expiry_time > NOW()
+    </select>
+
+    <!-- 使某个用户的所有令牌失效 -->
+    <update id="invalidateAllUserTokens">
+        UPDATE user_tokens
+        SET is_valid = 0
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 使单个令牌失效 -->
+    <update id="invalidateToken">
+        UPDATE user_tokens
+        SET is_valid = 0
+        WHERE token = #{token}
+    </update>
+
+    <!-- 清理过期的令牌 -->
+    <delete id="deleteExpiredTokens">
+        DELETE FROM user_tokens
+        WHERE expiry_time &lt; NOW()
+           OR is_valid = 0
+    </delete>
+
+</mapper>
