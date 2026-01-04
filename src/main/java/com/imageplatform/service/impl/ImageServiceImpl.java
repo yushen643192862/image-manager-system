@@ -1,10 +1,16 @@
 package com.imageplatform.service.impl;
 
 import com.imageplatform.dto.Request.GetThumbnailImageRequest;
+import com.imageplatform.dto.Request.UpdateImageInforRequest;
+import com.imageplatform.dto.Response.GetOriginalImageResponse;
 import com.imageplatform.dto.Response.GetThumbnailImageResponse;
 import com.imageplatform.dto.Response.ReturnImg;
 import com.imageplatform.entity.Image;
+import com.imageplatform.entity.ImageTag;
+import com.imageplatform.entity.Tag;
 import com.imageplatform.mapper.ImageMapper;
+import com.imageplatform.mapper.ImageTagMapper;
+import com.imageplatform.mapper.TagMapper;
 import com.imageplatform.service.ImageService;
 
 import net.coobird.thumbnailator.Thumbnails;
@@ -36,10 +42,16 @@ import java.util.UUID;
 public class ImageServiceImpl implements ImageService {
 
     private final ImageMapper imageMapper;
+    private final TagMapper tagMapper;
+    private final ImageTagMapper imageTagMapper;
 
-    public ImageServiceImpl(ImageMapper imageMapper) {
+    public ImageServiceImpl(ImageMapper imageMapper, TagMapper tagMapper,  ImageTagMapper imageTagMapper) {
         this.imageMapper = imageMapper;
+        this.tagMapper = tagMapper;
+        this.imageTagMapper = imageTagMapper;
     }
+
+
 
     @Override
     public GetThumbnailImageResponse GetImageList(GetThumbnailImageRequest request) {
@@ -222,5 +234,57 @@ public class ImageServiceImpl implements ImageService {
         }
 
         return Paths.get(originalPath);
+    }
+    @Override
+    public GetOriginalImageResponse getOriginalDetail(Integer imageId){
+        // 1. 获取图片基本信息
+        Image image = imageMapper.getImageByImageId(imageId);
+
+        // 2. 验证图片是否存在
+        if (image == null) {
+            return null; // 或者抛出异常
+        }
+
+        // 3. 获取图片的标签列表
+        List<ImageTag> imageTags = imageTagMapper.getImageTagsByImageId(imageId);
+        List<Tag> tags = new ArrayList<>();
+        for (ImageTag imageTag : imageTags) {
+            Tag tag = tagMapper.getTagById(imageTag.getTagId());
+            tags.add(tag);
+        }
+
+        // 4. 构建响应对象
+        GetOriginalImageResponse response = new GetOriginalImageResponse();
+
+        // 设置所有字段（补全部分）
+        response.setImageId(image.getId());                          // id -> imageId
+        response.setTitle(image.getTitle());                         // 标题
+        response.setDescription(image.getDescription());             // 描述（你已写的）
+        response.setSize(image.getFileSize());                   // 文件大小
+        response.setUploadTime(image.getUploadTime());               // 上传时间
+        response.setWidth(image.getWidth());                         // 宽度
+        response.setHeight(image.getHeight());                       // 高度
+        response.setCameraModel(image.getCameraModel());             // 相机型号
+        response.setTakenTime(image.getTakenTime());                 // 拍摄时间
+        response.setLatitude(image.getLatitude());                   // 纬度
+        response.setLongitude(image.getLongitude());                 // 经度
+        response.setTags(tags);                                      // 标签列表
+
+        return response;
+    }
+
+    @Override
+    public Void updateImageinfor(Integer imageId, UpdateImageInforRequest request){
+        imageMapper.updateImageByImageID(imageId, request.getTitle(), request.getDescription());
+        imageTagMapper.deleteImageTagByImageId(imageId);
+        if(request.getTags() != null){
+            for(Integer tagid : request.getTags()){
+                ImageTag imageTag = new ImageTag();
+                imageTag.setTagId(tagid);
+                imageTag.setImageId(imageId);
+                imageTagMapper.insertImageTag(imageTag);
+            }
+        }
+        return null;
     }
 }

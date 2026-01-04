@@ -1,7 +1,10 @@
 package com.imageplatform.service;
 
+import com.imageplatform.dto.Request.UpdateImageInforRequest;
+import com.imageplatform.dto.Response.GetOriginalImageResponse;
 import com.imageplatform.dto.Response.GetThumbnailImageResponse;
 import com.imageplatform.dto.Request.GetThumbnailImageRequest;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 
 
@@ -30,4 +33,8 @@ public interface ImageService {
      * @return 原路径
      */
     Path findOriginalPath(Integer imageId);
+
+    GetOriginalImageResponse getOriginalDetail(Integer imageId);
+
+    Void updateImageinfor(Integer imageId, UpdateImageInforRequest request);
 }

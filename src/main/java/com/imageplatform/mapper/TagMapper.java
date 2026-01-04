@@ -42,4 +42,6 @@ public interface TagMapper {
      */
     @Select("SELECT id, name, created_by FROM tags WHERE id = #{id}")
     Tag getTagById(@Param("id") Integer id);
+
+
 }

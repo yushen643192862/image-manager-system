@@ -11,6 +11,9 @@ public interface ImageMapper {
     @Select("SELECT * FROM image WHERE user_id = #{userid} ORDER BY upload_time DESC")
     List<Image> getImageByUserId(Integer userid);
 
+    @Select("SELECT * FROM image WHERE id = #{id}")
+    Image getImageByImageId(Integer id);
+
     @Select("SELECT thumbnail_path FROM image WHERE id = #{imageid}")
     String getOriginalPathByImageId(Integer imageid);
 
@@ -28,4 +31,10 @@ public interface ImageMapper {
             ")")
     @Options(useGeneratedKeys = true, keyProperty = "id", keyColumn = "id")
     void insertImage(Image image);
+
+    @Update("UPDATE image SET " +
+            "title = #{title}, " +
+            "description = #{description} " +
+            "WHERE id = #{imageId}")
+    void updateImageByImageID(Integer imageId, String title, String description);
 }

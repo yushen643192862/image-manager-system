@@ -1,8 +1,11 @@
 package com.imageplatform.controller;
+import com.imageplatform.dto.Request.UpdateImageInforRequest;
 import com.imageplatform.dto.Response.ApiResponse;
+import com.imageplatform.dto.Response.GetOriginalImageResponse;
 import com.imageplatform.dto.Response.GetThumbnailImageResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Min;
+import org.apache.commons.imaging.ImageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -168,6 +171,24 @@ public class ImageController {
 
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+    @GetMapping("/image/{imageId}/detail")
+    public ApiResponse<GetOriginalImageResponse> getOriginalImageDetail(@PathVariable Integer imageId) {
+        try{
+            GetOriginalImageResponse response = imageService.getOriginalDetail(imageId);
+            return ApiResponse.success("图片信息获取成功", response);
+        } catch (RuntimeException e) {
+            return ApiResponse.error(2001, e.getMessage());
+        }
+    }
+    @PutMapping("/image/{imageId}/update")
+    public ApiResponse<Void> updateImageinfor(@PathVariable Integer imageId, @RequestBody UpdateImageInforRequest request) {
+        try{
+            imageService.updateImageinfor(imageId, request);
+            return ApiResponse.success("图片信息更新成功", null);
+        } catch (RuntimeException e) {
+            return ApiResponse.error(2001, e.getMessage());
         }
     }
 }
