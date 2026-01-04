@@ -1,7 +1,11 @@
 package com.imageplatform.service;
 
+import com.imageplatform.dto.Request.ForgetRequest;
+import com.imageplatform.dto.Request.RegisterRequest;
 import com.imageplatform.dto.Response.LoginResponse;
 import com.imageplatform.dto.Request.LoginRequest;
+import com.imageplatform.dto.Response.RegisterResponse;
+import jakarta.validation.Valid;
 
 /**
  * 认证服务接口
@@ -26,8 +30,14 @@ public interface AuthService {
     /**
      * 用户注册
      * @param request 注册请求
+     * @return 注册响应（包含用户信息）
      */
-//    void register(RegisterRequest request);
+    RegisterResponse register(RegisterRequest request);
+    /**
+     * 忘记密码
+     * @param request 更改密码请求
+     */
+    void forget(@Valid ForgetRequest request);
 //
 //    /**
 //     * 用户登出

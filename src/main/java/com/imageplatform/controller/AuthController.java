@@ -1,11 +1,12 @@
 package com.imageplatform.controller;
 
-import com.imageplatform.common.exception.DeviceMismatchException;
-import com.imageplatform.common.exception.TokenExpiredException;
-import com.imageplatform.common.exception.TokenNotFoundException;
+import com.imageplatform.common.exception.authexception.*;
+import com.imageplatform.dto.Request.ForgetRequest;
 import com.imageplatform.dto.Response.ApiResponse;
 import com.imageplatform.dto.Request.LoginRequest;
+import com.imageplatform.dto.Request.RegisterRequest;
 import com.imageplatform.dto.Response.LoginResponse;
+import com.imageplatform.dto.Response.RegisterResponse;
 import com.imageplatform.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController  // 表明这是REST控制器
 @RequestMapping("/api/auth")  // 基础路径
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
     @Autowired  // 自动注入Service
@@ -21,7 +23,7 @@ public class AuthController {
 
     /**
      * 用户登录接口
-     * POST http://localhost:8080/api/auth/login
+     * POST http://localhost:8081/api/auth/login
      */
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
@@ -32,18 +34,23 @@ public class AuthController {
         try {
             LoginResponse response = authService.login(request, ipAddress, userAgent);
             return ApiResponse.success("登录成功", response);
-        }
-        catch (RuntimeException e) {
-            return ApiResponse.error(2001,e.getMessage());
+        } catch (RuntimeException e) {
+            return ApiResponse.error(2001, e.getMessage());
         }
     }
 
     /**
      * token登录接口
-     * POST http://localhost:8080/api/auth/token
+     * POST http://localhost:8081/api/auth/token
      */
     @PostMapping("/token")
-    public ApiResponse<LoginResponse> login(String token, HttpServletRequest httpRequest) {
+    public ApiResponse<LoginResponse> login(@RequestHeader(value = "Authorization", required = false) String authHeader, HttpServletRequest httpRequest) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ApiResponse.error(400, "令牌不能为空");
+        }
+
+        String token = authHeader.substring(7);
 
         String ipAddress = httpRequest.getRemoteAddr();
 
@@ -52,8 +59,7 @@ public class AuthController {
         try {
             LoginResponse response = authService.tokenLogin(token, ipAddress, userAgent);
             return ApiResponse.success("登录成功", response);
-        }
-        catch (TokenNotFoundException e) {
+        } catch (TokenNotFoundException e) {
             return ApiResponse.error(1001, "令牌不存在，请重新登录");
 
         } catch (DeviceMismatchException e) {
@@ -66,38 +72,63 @@ public class AuthController {
             return ApiResponse.error(400, e.getMessage());
         }
     }
-}
 
-//
-//
-//    /**
-//     * 2. 用户注册接口
-//     * POST http://localhost:8080/api/auth/register
-//     */
-//    @PostMapping("/register")
-//    public ApiResponse<?> register(
-//            @Valid @RequestBody RegisterRequest request
-//    ) {
-//        authService.register(
-//                request.getUsername(),
-//                request.getPassword(),
-//                request.getEmail()
-//        );
-//        return ApiResponse.success("注册成功");
-//    }
-//
+    /**
+     * 用户注册接口
+     * POST http://localhost:8081/api/auth/register
+     */
+    @PostMapping("/register")
+    public ApiResponse<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
+        try {
+            RegisterResponse response = authService.register(request);
+            return ApiResponse.success("注册成功",response);
+        }
+        catch (UsernameAlreadyExistsException e){
+            return ApiResponse.error(1004,e.getMessage());
+        }
+        catch (EmailAlreadyExistsException e){
+            return ApiResponse.error(1005,e.getMessage());
+        }
+        catch (IllegalArgumentException e){
+            return ApiResponse.error(400,e.getMessage());
+        }
+    }
+
+    /**
+     * 用户注册接口
+     * POST http://localhost:8081/api/auth/forget
+     */
+    @PostMapping("/forget")
+    public ApiResponse<Void> forget(@Valid @RequestBody ForgetRequest request) {
+        try {
+            authService.forget(request);
+            return ApiResponse.success("密码修改成功",null);
+        }
+        catch (UsernameAlreadyExistsException e){
+            return ApiResponse.error(1004,e.getMessage());
+        }
+        catch (EmailAlreadyExistsException e){
+            return ApiResponse.error(1005,e.getMessage());
+        }
+        catch (IllegalArgumentException e){
+            return ApiResponse.error(400,e.getMessage());
+        }
+    }
+
+
 //    /**
 //     * 3. 用户登出接口
 //     * POST http://localhost:8080/api/auth/logout
 //     * 需要认证：请求头需要携带Token
 //     */
 //    @PostMapping("/logout")
-//    public ApiResponse<?> logout(HttpServletRequest request) {
+//    public ApiResponse<Void> logout(@RequestBody HttpServletRequest request) {
 //        // 从请求头获取Token
 //        String token = extractToken(request);
 //        authService.logout(token);
 //        return ApiResponse.success("登出成功");
 //    }
+}
 //
 //    /**
 //     * 4. 刷新Token接口

@@ -1,4 +1,4 @@
-package com.imageplatform.common.exception;
+package com.imageplatform.common.exception.authexception;
 
 public class TokenExpiredException extends RuntimeException {
   public TokenExpiredException() {

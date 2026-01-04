@@ -30,6 +30,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.0'
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+	implementation 'org.apache.commons:commons-imaging:1.0-alpha3'
+	implementation 'net.coobird:thumbnailator:0.4.19'
+
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
 	compileOnly 'org.projectlombok:lombok'
