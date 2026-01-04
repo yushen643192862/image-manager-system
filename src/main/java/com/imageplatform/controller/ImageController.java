@@ -150,27 +150,37 @@ public class ImageController {
     @GetMapping("/image/{imageId}/original")
     public ResponseEntity<Resource> getOriginalImage(@PathVariable Integer imageId) {
         try {
+            System.out.println("🔥 收到原图请求，图片ID: " + imageId);
+
+            // 1. 根据imageId查找原图文件路径
             Path originalPath = imageService.findOriginalPath(imageId);
+            System.out.println("🔥 原图路径: " + originalPath);
 
             if (!Files.exists(originalPath)) {
+                System.out.println("❌ 文件不存在: " + originalPath);
                 return ResponseEntity.notFound().build();
             }
 
+            // 2. 创建Resource对象
             Resource resource = new UrlResource(originalPath.toUri());
+            System.out.println("✅ 文件找到，准备返回");
 
-            String contentType = Files.probeContentType(originalPath);
-            if (contentType == null) {
-                contentType = "application/octet-stream";
-            }
+            // 3. 确定文件类型
+            String contentType = determineContentType(originalPath);
+            System.out.println("🔥 内容类型: " + contentType);
 
+            // 4. 返回文件（关键修改：去掉或改为 inline）
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + resource.getFilename() + "\"")
+                    .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400") // 缓存1天
+                    // ⭐ 关键修改：去掉 attachment，或者改为 inline（二选一）
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"original_" + imageId + "\"")
                     .body(resource);
 
         } catch (Exception e) {
-            return ResponseEntity.notFound().build();
+            System.out.println("❌ 异常: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     @GetMapping("/image/{imageId}/detail")
@@ -187,6 +197,17 @@ public class ImageController {
         try{
             imageService.updateImageinfor(imageId, request);
             return ApiResponse.success("图片信息更新成功", null);
+        } catch (RuntimeException e) {
+            return ApiResponse.error(2001, e.getMessage());
+        }
+    }
+    @PutMapping("/image/{imageId}/updateimage")
+    public ApiResponse<Void> updateImage(
+            @RequestParam("file") MultipartFile file,
+            @PathVariable("imageId") Integer imageId) {
+        try{
+            imageService.updateImage(imageId, file);
+            return ApiResponse.success("图片更新成功", null);
         } catch (RuntimeException e) {
             return ApiResponse.error(2001, e.getMessage());
         }

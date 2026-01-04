@@ -14,10 +14,10 @@ public interface ImageMapper {
     @Select("SELECT * FROM image WHERE id = #{id}")
     Image getImageByImageId(Integer id);
 
-    @Select("SELECT thumbnail_path FROM image WHERE id = #{imageid}")
+    @Select("SELECT storage_path FROM image WHERE id = #{imageid}")
     String getOriginalPathByImageId(Integer imageid);
 
-    @Select("SELECT storage_path FROM image WHERE id = #{imageid}")
+    @Select("SELECT thumbnail_path FROM image WHERE id = #{imageid}")
     String getThumbnailPathByImageId(Integer imageid);
 
     @Insert("INSERT INTO image (" +

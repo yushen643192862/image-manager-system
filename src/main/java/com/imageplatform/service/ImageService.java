@@ -37,4 +37,6 @@ public interface ImageService {
     GetOriginalImageResponse getOriginalDetail(Integer imageId);
 
     Void updateImageinfor(Integer imageId, UpdateImageInforRequest request);
+
+    Void updateImage(Integer imageId, MultipartFile file);
 }

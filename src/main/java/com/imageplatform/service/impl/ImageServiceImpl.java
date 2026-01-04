@@ -287,4 +287,104 @@ public class ImageServiceImpl implements ImageService {
         }
         return null;
     }
+
+    @Override
+    public Void updateImage(Integer imageId, MultipartFile file) {
+        try {
+            System.out.println("=== 开始更新图片文件 ===");
+            System.out.println("图片ID: " + imageId);
+            System.out.println("新文件名: " + file.getOriginalFilename());
+
+            // === 1. 根据 imageId 查询原图片信息 ===
+            Image oldImage = imageMapper.getImageByImageId(imageId);
+            if (oldImage == null) {
+                throw new RuntimeException("图片不存在，ID: " + imageId);
+            }
+
+            System.out.println("原图路径: " + oldImage.getStoragePath());
+            System.out.println("原缩略图路径: " + oldImage.getThumbnailPath());
+
+            // === 2. 从旧路径中提取UUID和扩展名 ===
+            String uuid;
+            String oldExtension;
+            String oldOriginalPath = oldImage.getStoragePath();
+
+            if (oldOriginalPath != null && oldOriginalPath.contains("\\")) {
+                String oldFileName = oldOriginalPath.substring(oldOriginalPath.lastIndexOf("\\") + 1);
+                int dotIndex = oldFileName.lastIndexOf(".");
+                if (dotIndex > 0) {
+                    uuid = oldFileName.substring(0, dotIndex);  // UUID部分
+                    oldExtension = oldFileName.substring(dotIndex);  // 扩展名部分，如 ".png"
+                } else {
+                    uuid = oldFileName;
+                    oldExtension = ".jpg";  // 默认
+                }
+                System.out.println("提取UUID: " + uuid);
+                System.out.println("原扩展名: " + oldExtension);
+            } else {
+                uuid = UUID.randomUUID().toString();
+                oldExtension = ".jpg";
+                System.out.println("生成新UUID: " + uuid);
+            }
+
+            // === 3. 删除旧的图片文件 ===
+            try {
+                // 删除原图
+                Path oldOriginalPathObj = Paths.get(oldImage.getStoragePath());
+                if (Files.exists(oldOriginalPathObj)) {
+                    Files.delete(oldOriginalPathObj);
+                    System.out.println("已删除旧原图: " + oldOriginalPathObj);
+                }
+
+                // 删除缩略图
+                Path oldThumbnailPath = Paths.get(oldImage.getThumbnailPath());
+                if (Files.exists(oldThumbnailPath)) {
+                    Files.delete(oldThumbnailPath);
+                    System.out.println("已删除旧缩略图: " + oldThumbnailPath);
+                }
+            } catch (IOException e) {
+                System.out.println("删除旧文件失败: " + e.getMessage());
+            }
+
+            // === 4. 保存新的原始图片（使用原扩展名）===
+            String originalDir = "C:\\Users\\Lenovo\\Desktop\\BS\\final\\image-manager-system\\image\\";
+            Files.createDirectories(Paths.get(originalDir));
+
+            // ⭐ 关键：使用原扩展名
+            String originalFileName = uuid + oldExtension;
+            Path originalPath = Paths.get(originalDir + originalFileName);
+
+            try (InputStream inputStream = file.getInputStream()) {
+                Files.copy(inputStream, originalPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+            System.out.println("新原图保存到: " + originalPath);
+
+            // === 5. 生成新的缩略图（缩略图统一用jpg）===
+            String thumbnailDir = "C:\\Users\\Lenovo\\Desktop\\BS\\final\\image-manager-system\\thumbnail\\";
+            Files.createDirectories(Paths.get(thumbnailDir));
+
+            String thumbnailFileName = "thumb_" + uuid + ".jpg";
+            Path thumbnailPath = Paths.get(thumbnailDir + thumbnailFileName);
+
+            Thumbnails.of(originalPath.toFile())
+                    .width(300)
+                    .keepAspectRatio(true)
+                    .outputQuality(0.9)
+                    .outputFormat("jpg")
+                    .toFile(thumbnailPath.toFile());
+
+            System.out.println("新缩略图生成到: " + thumbnailPath);
+
+            System.out.println("=== 图片文件更新完成 ===");
+            System.out.println("新原图: " + originalPath);
+            System.out.println("新缩略图: " + thumbnailPath);
+
+        } catch (IOException e) {
+            throw new RuntimeException("文件处理失败: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException("更新图片文件失败: " + e.getMessage(), e);
+        }
+
+        return null;
+    }
 }
