@@ -29,14 +29,12 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenUtil jwtTokenUtil;
     private final TokenMapper tokenMapper;
     private final PasswordEncoder passwordEncoder;
-    private final ResetTokenMapper resetTokenMapper;
 
     public AuthServiceImpl(UserMapper userMapper, JwtTokenUtil jwtTokenUtil, TokenMapper tokenMapper, ResetTokenMapper resetTokenMapper) {
         this.userMapper = userMapper;
         this.jwtTokenUtil = jwtTokenUtil;
         this.tokenMapper = tokenMapper;
         this.passwordEncoder = new BCryptPasswordEncoder();
-        this.resetTokenMapper = resetTokenMapper;
     }
 
     @Override
@@ -52,7 +50,7 @@ public class AuthServiceImpl implements AuthService {
         }
         LoginResponse loginResponse = new LoginResponse();
         String token_str;
-        token_str = jwtTokenUtil.generateToken(user.getId().longValue(),user.getEmail(), user.getUsername(), request.isRememberMe());
+        token_str = jwtTokenUtil.generateToken(user.getId().longValue(), user.getEmail(), user.getUsername(), request.isRememberMe());
         Token token = new Token();
         token.setUserId(user.getId());
         token.setToken(token_str);
@@ -80,10 +78,10 @@ public class AuthServiceImpl implements AuthService {
         if (token == null) {
             throw new TokenNotFoundException("无效的令牌");
         }
-        if(!token.getDeviceInfo().equals(device)){
+        if (!token.getDeviceInfo().equals(device)) {
             throw new DeviceMismatchException("设备信息不匹配，请重新登录");
         }
-        if (!token.isValid()){
+        if (!token.isValid()) {
             throw new TokenExpiredException();
         }
         User user = userMapper.findById(token.getUserId());
@@ -104,7 +102,7 @@ public class AuthServiceImpl implements AuthService {
             throw new EmailAlreadyExistsException(user.getEmail());
         }
         user = userMapper.findByUsername(request.getUsername());
-        if (!(user == null)){
+        if (!(user == null)) {
             throw new UsernameAlreadyExistsException(user.getUsername());
         }
         if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
@@ -117,20 +115,10 @@ public class AuthServiceImpl implements AuthService {
         user.setUsername(request.getUsername());
         user.setAvatarUrl(null);
         userMapper.insert(user);
-        RegisterResponse  registerResponse = new RegisterResponse();
+        RegisterResponse registerResponse = new RegisterResponse();
         registerResponse.setEmail(request.getEmail());
         registerResponse.setUsername(request.getUsername());
         registerResponse.setAvatarUrl(null);
         return registerResponse;
-    }
-    @Override
-    public void forget(ForgetRequest request) {
-//        User user = userMapper.findByEmail(request.getEmail());
-//        if (user == null) {
-//            throw new EmailNotExistsException(request.getEmail());
-//        }
-//        String token = UUID.randomUUID().toString();
-//        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(tokenExpirationMinutes);
-//        resetTokenMapper.insertToken(token);
     }
 }

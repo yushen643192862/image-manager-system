@@ -15,7 +15,7 @@ public interface TagMapper {
      * @param userId 用户ID
      * @return 标签列表
      */
-    @Select("SELECT * FROM tags WHERE created_by = #{userId}")
+    @Select("SELECT * FROM tag WHERE created_by = #{userId}")
     List<Tag> getTagsByUserId(@Param("userId") Integer userId);
 
     /**
@@ -23,7 +23,7 @@ public interface TagMapper {
      * @param tagId 标签ID
      * @return 影响的行数
      */
-    @Delete("DELETE FROM tags WHERE id = #{tagId}")
+    @Delete("DELETE FROM tag WHERE id = #{tagId}")
     int deleteTagByTagId(@Param("tagId") Integer tagId);
 
     /**
@@ -31,7 +31,7 @@ public interface TagMapper {
      * @param tag 标签对象
      * @return 影响的行数
      */
-    @Insert("INSERT INTO tags(name, created_by,created_time) VALUES(#{name}, #{createdBy}, NOW())")
+    @Insert("INSERT INTO tag(name, created_by,created_time) VALUES(#{name}, #{createdBy}, NOW())")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insertTag(Tag tag);
 
@@ -40,7 +40,7 @@ public interface TagMapper {
      * @param id 标签ID
      * @return 标签对象
      */
-    @Select("SELECT id, name, created_by FROM tags WHERE id = #{id}")
+    @Select("SELECT id, name, created_by FROM tag WHERE id = #{id}")
     Tag getTagById(@Param("id") Integer id);
 
 

@@ -88,7 +88,6 @@ public class UserController {
                     .body(resource);
 
         } catch (Exception e) {
-            System.out.println("❌ 异常: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

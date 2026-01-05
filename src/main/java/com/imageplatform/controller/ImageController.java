@@ -84,26 +84,15 @@ public class ImageController {
     @GetMapping("/image/{imageId}/thumbnail")
     public ResponseEntity<Resource> getThumbnail(@PathVariable Integer imageId) {
         try {
-            System.out.println("🔥 收到缩略图请求，图片ID: " + imageId);
-
-            // 1. 根据imageId查找缩略图文件路径
             Path thumbnailPath = imageService.findThumbnailPath(imageId);
-            System.out.println("🔥 缩略图路径: " + thumbnailPath);
 
             if (!Files.exists(thumbnailPath)) {
-                System.out.println("❌ 文件不存在: " + thumbnailPath);
                 return ResponseEntity.notFound().build();
             }
 
-            // 2. 创建Resource对象
             Resource resource = new UrlResource(thumbnailPath.toUri());
-            System.out.println("✅ 文件找到，准备返回");
-
-            // 3. 确定文件类型
             String contentType = determineContentType(thumbnailPath);
-            System.out.println("🔥 内容类型: " + contentType);
 
-            // 4. 返回文件（直接返回ResponseEntity<Resource>，不要ApiResponse包装）
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CACHE_CONTROL, "public, max-age=3600")
@@ -111,8 +100,6 @@ public class ImageController {
                     .body(resource);
 
         } catch (Exception e) {
-            System.out.println("❌ 异常: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -134,7 +121,6 @@ public class ImageController {
         } else if (fileName.endsWith(".webp")) {
             return "image/webp";
         } else {
-            // 尝试探测类型
             try {
                 String detectedType = Files.probeContentType(filePath);
                 return detectedType != null ? detectedType : "application/octet-stream";
@@ -150,36 +136,22 @@ public class ImageController {
     @GetMapping("/image/{imageId}/original")
     public ResponseEntity<Resource> getOriginalImage(@PathVariable Integer imageId) {
         try {
-            System.out.println("🔥 收到原图请求，图片ID: " + imageId);
-
-            // 1. 根据imageId查找原图文件路径
             Path originalPath = imageService.findOriginalPath(imageId);
-            System.out.println("🔥 原图路径: " + originalPath);
 
             if (!Files.exists(originalPath)) {
-                System.out.println("❌ 文件不存在: " + originalPath);
                 return ResponseEntity.notFound().build();
             }
 
-            // 2. 创建Resource对象
             Resource resource = new UrlResource(originalPath.toUri());
-            System.out.println("✅ 文件找到，准备返回");
-
-            // 3. 确定文件类型
             String contentType = determineContentType(originalPath);
-            System.out.println("🔥 内容类型: " + contentType);
 
-            // 4. 返回文件（关键修改：去掉或改为 inline）
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400") // 缓存1天
-                    // ⭐ 关键修改：去掉 attachment，或者改为 inline（二选一）
+                    .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"original_" + imageId + "\"")
                     .body(resource);
 
         } catch (Exception e) {
-            System.out.println("❌ 异常: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -208,6 +180,16 @@ public class ImageController {
         try{
             imageService.updateImage(imageId, file);
             return ApiResponse.success("图片更新成功", null);
+        } catch (RuntimeException e) {
+            return ApiResponse.error(2001, e.getMessage());
+        }
+    }
+    @DeleteMapping("/image/{imageId}/delete")
+    public ApiResponse<Void> deleteImage(
+            @PathVariable("imageId") Integer imageId) {
+        try{
+            imageService.deleteImage(imageId);
+            return ApiResponse.success("图片删除成功", null);
         } catch (RuntimeException e) {
             return ApiResponse.error(2001, e.getMessage());
         }

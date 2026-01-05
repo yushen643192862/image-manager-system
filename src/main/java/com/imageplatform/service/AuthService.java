@@ -33,36 +33,5 @@ public interface AuthService {
      * @return 注册响应（包含用户信息）
      */
     RegisterResponse register(RegisterRequest request);
-    /**
-     * 忘记密码
-     * @param request 更改密码请求
-     */
-    void forget(@Valid ForgetRequest request);
-//
-//    /**
-//     * 用户登出
-//     * @param token 用户的token
-//     */
-//    void logout(String token);
-//
-//    /**
-//     * 刷新访问令牌
-//     * @param refreshToken 刷新令牌
-//     * @return 新的登录响应
-//     */
-//    LoginResponse refreshToken(String refreshToken);
-//
-//    /**
-//     * 验证token是否有效
-//     * @param token 要验证的token
-//     * @return 是否有效
-//     */
-//    boolean validateToken(String token);
-//
-//    /**
-//     * 根据token获取用户ID
-//     * @param token 用户token
-//     * @return 用户ID
-//     */
-//    Integer getUserIdFromToken(String token);
+
 }

@@ -16,6 +16,7 @@ public interface ImageService {
      * @param request 图片请求类
      * @return 图片响应（包含URL）
      */
+
     GetThumbnailImageResponse GetImageList(GetThumbnailImageRequest request);
      /** 上传图片
      * @param file 图片文件
@@ -39,4 +40,6 @@ public interface ImageService {
     Void updateImageinfor(Integer imageId, UpdateImageInforRequest request);
 
     Void updateImage(Integer imageId, MultipartFile file);
+
+    Void deleteImage(Integer imageId);
 }

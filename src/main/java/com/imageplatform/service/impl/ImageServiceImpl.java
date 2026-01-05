@@ -21,6 +21,7 @@ import org.apache.commons.imaging.formats.jpeg.JpegImageMetadata;
 import org.apache.commons.imaging.formats.tiff.TiffImageMetadata;
 import org.apache.commons.imaging.formats.tiff.constants.ExifTagConstants;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -51,7 +52,11 @@ public class ImageServiceImpl implements ImageService {
         this.imageTagMapper = imageTagMapper;
     }
 
+    @Value("${app.upload.image-dir:/app/uploads/images}")
+    private String imageUploadDir;
 
+    @Value("${app.upload.thumbnail-dir:/app/uploads/thumbnails}")
+    private String thumbnailDir;
 
     @Override
     public GetThumbnailImageResponse GetImageList(GetThumbnailImageRequest request) {
@@ -85,82 +90,66 @@ public class ImageServiceImpl implements ImageService {
     @Override
     public Void uploadImage(MultipartFile file, Integer userId) {
         try {
-            // === 1. 保存原始图片到本地 ===
             String originalFilename = file.getOriginalFilename();
-
-            // 原图保存路径
-            String originalDir = "C:\\Users\\Lenovo\\Desktop\\BS\\final\\image-manager-system\\image\\";
+            String originalDir = imageUploadDir;
             Files.createDirectories(Paths.get(originalDir));
 
-            // 生成唯一文件名
             String uuid = UUID.randomUUID().toString();
             String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
             String originalFileName = uuid + fileExtension;
             Path originalPath = Paths.get(originalDir + originalFileName);
 
-            // 保存原图
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, originalPath, StandardCopyOption.REPLACE_EXISTING);
             }
 
-            // 获取图片尺寸
             BufferedImage originalImage = ImageIO.read(file.getInputStream());
             int imgWidth = originalImage.getWidth();
             int imgHeight = originalImage.getHeight();
 
-            // === 2. 使用 Thumbnailator 生成缩略图并保存到本地 ===
-            String thumbnailDir = "C:\\Users\\Lenovo\\Desktop\\BS\\final\\image-manager-system\\thumbnail\\";
+            String thumbnailDir = this.thumbnailDir;
             Files.createDirectories(Paths.get(thumbnailDir));
 
             String thumbnailFileName = "thumb_" + uuid + ".jpg";
             Path thumbnailPath = Paths.get(thumbnailDir + thumbnailFileName);
 
-
-            // 使用 Thumbnailator 生成缩略图（保持宽高比，质量高）
             Thumbnails.of(originalPath.toFile())
                     .width(300)
-                    .keepAspectRatio(true)          // 保持宽高比
-                    .outputQuality(0.9)             // 输出质量
-                    .outputFormat("jpg")            // 输出格式
+                    .keepAspectRatio(true)
+                    .outputQuality(0.9)
+                    .outputFormat("jpg")
                     .toFile(thumbnailPath.toFile());
 
-            // === 3. 使用 commons-imaging 提取 EXIF 信息 ===
             String cameraModel = null;
             LocalDateTime takenTime = null;
             Float latitude = null;
             Float longitude = null;
 
             try {
-                // 读取图片元数据
                 ImageMetadata metadata = Imaging.getMetadata(file.getBytes());
 
                 if (metadata != null && metadata instanceof JpegImageMetadata) {
                     JpegImageMetadata jpegMetadata = (JpegImageMetadata) metadata;
 
-                    // 获取EXIF信息
                     TiffImageMetadata exif = jpegMetadata.getExif();
                     if (exif != null) {
-                        // 提取相机型号 - 使用正确的方式
                         Object modelValue = exif.getFieldValue(
                                 org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants.TIFF_TAG_MODEL);
                         if (modelValue != null) {
                             cameraModel = modelValue.toString();
                         }
 
-                        // 提取拍摄时间 - 使用正确的方式
                         Object dateValue = exif.getFieldValue(ExifTagConstants.EXIF_TAG_DATE_TIME_ORIGINAL);
                         if (dateValue != null) {
                             String dateStr = dateValue.toString();
-                            // EXIF日期格式: "2023:01:15 14:30:25"
                             try {
                                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
                                 takenTime = LocalDateTime.parse(dateStr, formatter);
                             } catch (Exception e) {
-                                System.out.println("日期解析失败: " + dateStr);
+                                // 日期解析失败
                             }
                         }
 
-                        // 提取GPS信息
                         TiffImageMetadata.GPSInfo gpsInfo = exif.getGPS();
                         if (gpsInfo != null) {
                             latitude = (float) gpsInfo.getLatitudeAsDegreesNorth();
@@ -168,16 +157,11 @@ public class ImageServiceImpl implements ImageService {
                         }
                     }
                 }
-            } catch (ImageReadException e) {
-                System.out.println("无法读取EXIF信息: " + e.getMessage());
-            } catch (IOException e) {
-                System.out.println("读取文件失败: " + e.getMessage());
+            } catch (ImageReadException | IOException e) {
+                // EXIF信息读取失败
             }
 
-            // === 4. 创建Image对象并设置所有信息 ===
             Image image = new Image();
-
-            // 基本信息
             image.setUserId(userId);
             image.setOriginalFilename(originalFilename);
             image.setStoragePath(originalPath.toString());
@@ -186,26 +170,12 @@ public class ImageServiceImpl implements ImageService {
             image.setUploadTime(LocalDateTime.now());
             image.setWidth(imgWidth);
             image.setHeight(imgHeight);
-
-            // EXIF信息
             image.setCameraModel(cameraModel);
             image.setTakenTime(takenTime);
             image.setLatitude(latitude);
             image.setLongitude(longitude);
 
-            // === 5. 插入数据库 ===
             imageMapper.insertImage(image);
-
-            System.out.println("=== 图片上传完成 ===");
-            System.out.println("原图保存位置: " + originalPath);
-            System.out.println("缩略图位置: " + thumbnailPath);
-            System.out.println("图片尺寸: " + imgWidth + "x" + imgHeight);
-            if (cameraModel != null) {
-                System.out.println("相机型号: " + cameraModel);
-            }
-            if (takenTime != null) {
-                System.out.println("拍摄时间: " + takenTime);
-            }
 
         } catch (IOException e) {
             throw new RuntimeException("文件处理失败: " + e.getMessage());
@@ -215,6 +185,7 @@ public class ImageServiceImpl implements ImageService {
 
         return null;
     }
+
     @Override
     public Path findThumbnailPath(Integer imageId){
         String originalPath = imageMapper.getThumbnailPathByImageId(imageId);
@@ -225,6 +196,7 @@ public class ImageServiceImpl implements ImageService {
 
         return Paths.get(originalPath);
     }
+
     @Override
     public Path findOriginalPath(Integer imageId){
         String originalPath = imageMapper.getOriginalPathByImageId(imageId);
@@ -235,17 +207,15 @@ public class ImageServiceImpl implements ImageService {
 
         return Paths.get(originalPath);
     }
+
     @Override
     public GetOriginalImageResponse getOriginalDetail(Integer imageId){
-        // 1. 获取图片基本信息
         Image image = imageMapper.getImageByImageId(imageId);
 
-        // 2. 验证图片是否存在
         if (image == null) {
-            return null; // 或者抛出异常
+            return null;
         }
 
-        // 3. 获取图片的标签列表
         List<ImageTag> imageTags = imageTagMapper.getImageTagsByImageId(imageId);
         List<Tag> tags = new ArrayList<>();
         for (ImageTag imageTag : imageTags) {
@@ -253,22 +223,19 @@ public class ImageServiceImpl implements ImageService {
             tags.add(tag);
         }
 
-        // 4. 构建响应对象
         GetOriginalImageResponse response = new GetOriginalImageResponse();
-
-        // 设置所有字段（补全部分）
-        response.setImageId(image.getId());                          // id -> imageId
-        response.setTitle(image.getTitle());                         // 标题
-        response.setDescription(image.getDescription());             // 描述（你已写的）
-        response.setSize(image.getFileSize());                   // 文件大小
-        response.setUploadTime(image.getUploadTime());               // 上传时间
-        response.setWidth(image.getWidth());                         // 宽度
-        response.setHeight(image.getHeight());                       // 高度
-        response.setCameraModel(image.getCameraModel());             // 相机型号
-        response.setTakenTime(image.getTakenTime());                 // 拍摄时间
-        response.setLatitude(image.getLatitude());                   // 纬度
-        response.setLongitude(image.getLongitude());                 // 经度
-        response.setTags(tags);                                      // 标签列表
+        response.setImageId(image.getId());
+        response.setTitle(image.getTitle());
+        response.setDescription(image.getDescription());
+        response.setSize(image.getFileSize());
+        response.setUploadTime(image.getUploadTime());
+        response.setWidth(image.getWidth());
+        response.setHeight(image.getHeight());
+        response.setCameraModel(image.getCameraModel());
+        response.setTakenTime(image.getTakenTime());
+        response.setLatitude(image.getLatitude());
+        response.setLongitude(image.getLongitude());
+        response.setTags(tags);
 
         return response;
     }
@@ -287,85 +254,49 @@ public class ImageServiceImpl implements ImageService {
         }
         return null;
     }
-
     @Override
     public Void updateImage(Integer imageId, MultipartFile file) {
         try {
-            System.out.println("=== 开始更新图片文件 ===");
-            System.out.println("图片ID: " + imageId);
-            System.out.println("新文件名: " + file.getOriginalFilename());
-
-            // === 1. 根据 imageId 查询原图片信息 ===
+            // 1. 从数据库查询原图片信息
             Image oldImage = imageMapper.getImageByImageId(imageId);
             if (oldImage == null) {
                 throw new RuntimeException("图片不存在，ID: " + imageId);
             }
 
-            System.out.println("原图路径: " + oldImage.getStoragePath());
-            System.out.println("原缩略图路径: " + oldImage.getThumbnailPath());
+            // 2. 直接使用数据库中的文件路径（不变）
+            String originalFilePath = oldImage.getStoragePath();
+            String thumbnailFilePath = oldImage.getThumbnailPath();
 
-            // === 2. 从旧路径中提取UUID和扩展名 ===
-            String uuid;
-            String oldExtension;
-            String oldOriginalPath = oldImage.getStoragePath();
-
-            if (oldOriginalPath != null && oldOriginalPath.contains("\\")) {
-                String oldFileName = oldOriginalPath.substring(oldOriginalPath.lastIndexOf("\\") + 1);
-                int dotIndex = oldFileName.lastIndexOf(".");
-                if (dotIndex > 0) {
-                    uuid = oldFileName.substring(0, dotIndex);  // UUID部分
-                    oldExtension = oldFileName.substring(dotIndex);  // 扩展名部分，如 ".png"
-                } else {
-                    uuid = oldFileName;
-                    oldExtension = ".jpg";  // 默认
-                }
-                System.out.println("提取UUID: " + uuid);
-                System.out.println("原扩展名: " + oldExtension);
-            } else {
-                uuid = UUID.randomUUID().toString();
-                oldExtension = ".jpg";
-                System.out.println("生成新UUID: " + uuid);
+            if (originalFilePath == null || thumbnailFilePath == null) {
+                throw new RuntimeException("图片文件路径不存在");
             }
 
-            // === 3. 删除旧的图片文件 ===
-            try {
-                // 删除原图
-                Path oldOriginalPathObj = Paths.get(oldImage.getStoragePath());
-                if (Files.exists(oldOriginalPathObj)) {
-                    Files.delete(oldOriginalPathObj);
-                    System.out.println("已删除旧原图: " + oldOriginalPathObj);
-                }
+            Path originalPath = Paths.get(originalFilePath);
+            Path thumbnailPath = Paths.get(thumbnailFilePath);
 
-                // 删除缩略图
-                Path oldThumbnailPath = Paths.get(oldImage.getThumbnailPath());
-                if (Files.exists(oldThumbnailPath)) {
-                    Files.delete(oldThumbnailPath);
-                    System.out.println("已删除旧缩略图: " + oldThumbnailPath);
-                }
-            } catch (IOException e) {
-                System.out.println("删除旧文件失败: " + e.getMessage());
-            }
+            // 3. 确保目录存在
+            Files.createDirectories(originalPath.getParent());
 
-            // === 4. 保存新的原始图片（使用原扩展名）===
-            String originalDir = "C:\\Users\\Lenovo\\Desktop\\BS\\final\\image-manager-system\\image\\";
-            Files.createDirectories(Paths.get(originalDir));
-
-            // ⭐ 关键：使用原扩展名
-            String originalFileName = uuid + oldExtension;
-            Path originalPath = Paths.get(originalDir + originalFileName);
-
+            // 4. 直接覆盖原文件（保持路径不变）
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, originalPath, StandardCopyOption.REPLACE_EXISTING);
             }
-            System.out.println("新原图保存到: " + originalPath);
 
-            // === 5. 生成新的缩略图（缩略图统一用jpg）===
-            String thumbnailDir = "C:\\Users\\Lenovo\\Desktop\\BS\\final\\image-manager-system\\thumbnail\\";
-            Files.createDirectories(Paths.get(thumbnailDir));
+            // 5. 获取新文件的属性
+            long fileSize = file.getSize();
+            int width = 0;
+            int height = 0;
+            try {
+                BufferedImage bufferedImage = ImageIO.read(originalPath.toFile());
+                if (bufferedImage != null) {
+                    width = bufferedImage.getWidth();
+                    height = bufferedImage.getHeight();
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("获取新文件的属性失败: " + e.getMessage());
+            }
 
-            String thumbnailFileName = "thumb_" + uuid + ".jpg";
-            Path thumbnailPath = Paths.get(thumbnailDir + thumbnailFileName);
-
+            // 6. 重新生成缩略图（覆盖原缩略图）
             Thumbnails.of(originalPath.toFile())
                     .width(300)
                     .keepAspectRatio(true)
@@ -373,18 +304,31 @@ public class ImageServiceImpl implements ImageService {
                     .outputFormat("jpg")
                     .toFile(thumbnailPath.toFile());
 
-            System.out.println("新缩略图生成到: " + thumbnailPath);
-
-            System.out.println("=== 图片文件更新完成 ===");
-            System.out.println("新原图: " + originalPath);
-            System.out.println("新缩略图: " + thumbnailPath);
-
+            // 7. 只更新数据库中的大小、宽高信息（文件路径不变）
+            if (fileSize > 0 && width > 0 && height > 0) {
+                try {
+                    imageMapper.updateImageByImageID_S_H_W(
+                            imageId,
+                            (int) fileSize,
+                            width,
+                            height
+                    );
+                } catch (Exception e) {
+                    throw new RuntimeException("更新数据库失败: " + e.getMessage());
+                }
+            }
+            return null;
         } catch (IOException e) {
             throw new RuntimeException("文件处理失败: " + e.getMessage());
         } catch (Exception e) {
-            throw new RuntimeException("更新图片文件失败: " + e.getMessage(), e);
+            throw new RuntimeException("更新图片失败: " + e.getMessage(), e);
         }
+    }
 
+    @Override
+    public Void deleteImage(Integer imageId){
+        imageTagMapper.deleteImageTagByImageId(imageId);
+        imageMapper.deleteImageByImageId(imageId);
         return null;
     }
 }

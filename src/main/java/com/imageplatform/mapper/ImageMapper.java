@@ -37,4 +37,13 @@ public interface ImageMapper {
             "description = #{description} " +
             "WHERE id = #{imageId}")
     void updateImageByImageID(Integer imageId, String title, String description);
+    @Update("UPDATE image SET " +
+            "file_size = #{size}, " +
+            "width = #{width}, " +
+            "height = #{height} " +
+            "WHERE id = #{imageId}")
+    void updateImageByImageID_S_H_W(Integer imageId, Integer size, Integer width, Integer height);
+
+    @Delete("DELETE FROM image WHERE id = #{imageId}")
+    int deleteImageByImageId(@Param("imageId") Integer imageId);
 }
